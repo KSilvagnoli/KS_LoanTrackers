@@ -118,7 +118,3 @@ differ.
     top of its <script> block.
   - Themes (colors) live in the :root CSS variables at the top of
     each file.
-
-===============================================================
- Built with Claude Code.  Not financial advice — just a tracker.
-===============================================================
