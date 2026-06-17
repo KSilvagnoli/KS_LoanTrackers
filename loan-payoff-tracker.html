@@ -186,7 +186,7 @@
         <input type="text" id="binid" placeholder="(blank = create a new cloud save)">
         <div class="row" style="margin-top:12px">
           <button onclick="setupSync()">🔗 Connect / Create</button>
-          <button class="ghost" onclick="pullCloud(true)">⟳ Load from Cloud</button>
+          <button class="ghost" onclick="manualLoad()">⟳ Load from Cloud</button>
         </div>
         <div class="hint" id="binIdShow"></div>
         <div class="hint">Your key is stored only in <b>this browser</b> and sent straight to JSONBin — never anywhere else. Use a <b>private</b> bin. On a second device, paste the <b>same Master Key + the Bin ID</b> shown after first setup.</div>
@@ -202,6 +202,7 @@
   </div>
 
   <p class="center vsmall">Your real numbers live on Aidvantage — tap a monster’s “fix balance” to match it exactly anytime.</p>
+  <p class="center vsmall" style="opacity:.55">build v3 · cloud-fix</p>
 </div>
 
 <div id="toast"></div>
@@ -442,28 +443,48 @@ async function setupSync(){
     renderSyncStatus();
   }catch(e){ toast("Sync failed: "+e.message); renderSyncStatus(); }
 }
+// pull whatever is currently typed into the key/bin boxes into CFG (so buttons work without "Connect" first)
+function syncKeysFromInputs(){
+  const mk=$("mkey").value.trim(), bn=$("binid").value.trim();
+  if(mk) CFG.mkey=mk;
+  if(bn) CFG.binid=bn;
+  saveCfg();
+}
+async function httpErr(r){
+  let body=""; try{ body=await r.text(); }catch(e){}
+  return new Error("HTTP "+r.status+(body?(" — "+body.slice(0,120)):""));
+}
 async function pushCloud(){
   if(!CFG.mkey||!CFG.binid) return;
   try{
-    const r=await fetch(API+"/b/"+CFG.binid,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":CFG.mkey},body:JSON.stringify(S)});
-    if(!r.ok) throw new Error("HTTP "+r.status);
+    const r=await fetch(API+"/b/"+CFG.binid,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":CFG.mkey,"X-Bin-Versioning":"false"},body:JSON.stringify(S)});
+    if(!r.ok) throw await httpErr(r);
     renderSyncStatus(true);
-  }catch(e){ renderSyncStatus(false,e.message); }
+  }catch(e){ console.error("pushCloud:",e); renderSyncStatus(false,e.message); }
+}
+// manual "Load from Cloud" button: read the boxes first, then pull
+async function manualLoad(){
+  syncKeysFromInputs();
+  if(!CFG.mkey||!CFG.binid){ toast("Paste both your Master Key and Bin ID first."); return; }
+  await pullCloud(true);
 }
 async function pullCloud(announce){
   if(!CFG.mkey||!CFG.binid){ if(announce) toast("Set up sync first."); return; }
   try{
-    const r=await fetch(API+"/b/"+CFG.binid+"/latest",{headers:{"X-Master-Key":CFG.mkey}});
-    if(!r.ok) throw new Error("HTTP "+r.status);
+    const r=await fetch(API+"/b/"+CFG.binid+"/latest",{headers:{"X-Master-Key":CFG.mkey,"X-Bin-Meta":"false"}});
+    if(!r.ok) throw await httpErr(r);
     const j=await r.json();
-    const remote=j.record;
+    // with X-Bin-Meta:false JSONBin returns the record directly; fall back to j.record otherwise
+    const remote = (j && j.loans) ? j : (j && j.record ? j.record : null);
     if(remote && remote.loans){
       S=mergeDefaults(remote);
       localStorage.setItem(LS,JSON.stringify(S));
       accrue(); render();
       if(announce) toast("☁️ Loaded latest from cloud.");
+    } else if(announce){
+      toast("Connected, but no saved quest found in that bin yet.");
     }
-  }catch(e){ if(announce) toast("Load failed: "+e.message); }
+  }catch(e){ console.error("pullCloud:",e); if(announce) toast("Load failed: "+e.message); renderSyncStatus(false,e.message); }
 }
 function renderSyncStatus(ok,msg){
   const el=$("syncStatus");
