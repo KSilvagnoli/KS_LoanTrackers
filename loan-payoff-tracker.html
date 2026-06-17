@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚔️ Debt Slayer — Loan Payoff Quest</title>
+<style>
+  :root{
+    --bg:#0e0b16; --bg2:#171221; --panel:#1d1730; --panel2:#251d3a;
+    --ink:#ece6ff; --muted:#9b8fc7; --gold:#ffce54; --gold2:#ffb627;
+    --hp:#e0455e; --hp2:#ff6b81; --xp:#37d67a; --xp2:#5ffaa0;
+    --boss:#b3263f; --boss-glow:#ff3b5c; --mana:#4aa3ff;
+    --border:#352b52; --shadow:0 10px 30px rgba(0,0,0,.45);
+    --r:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:radial-gradient(1200px 800px at 50% -10%,#241a3b 0%,var(--bg) 60%);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+  .wrap{max-width:760px;margin:0 auto;padding:18px 14px 60px}
+  h1{font-size:1.7rem;margin:.2em 0 .1em;text-align:center;letter-spacing:.5px;
+     background:linear-gradient(180deg,#fff,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 18px rgba(255,206,84,.25)}
+  .sub{text-align:center;color:var(--muted);margin:0 0 16px;font-size:.85rem}
+  .panel{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--border);border-radius:var(--r);padding:16px;margin:14px 0;box-shadow:var(--shadow)}
+  .panel h2{margin:0 0 12px;font-size:1.05rem;color:var(--gold);display:flex;align-items:center;gap:8px}
+
+  /* Overall war banner */
+  .warbar{text-align:center}
+  .gold-num{font-size:2.4rem;font-weight:800;color:var(--gold);text-shadow:0 2px 14px rgba(255,206,84,.3);line-height:1.1}
+  .warbar .label{color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:1.5px}
+  .megabar{height:22px;background:#120e1f;border:1px solid var(--border);border-radius:999px;overflow:hidden;margin:14px 0 6px;position:relative}
+  .megabar>i{display:block;height:100%;background:linear-gradient(90deg,var(--xp),var(--xp2));width:0;transition:width .8s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 16px rgba(55,214,122,.6)}
+  .megabar .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;text-shadow:0 1px 2px #000}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:10px 6px;text-align:center}
+  .stat b{display:block;font-size:1.05rem;color:#fff}
+  .stat span{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  @media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}.gold-num{font-size:1.9rem}}
+
+  /* Monsters */
+  .monster{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin:10px 0;position:relative;overflow:hidden;transition:.3s}
+  .monster.boss{border-color:var(--boss);box-shadow:0 0 0 1px rgba(255,59,92,.25),0 0 24px rgba(255,59,92,.12) inset}
+  .monster.dead{opacity:.5;filter:grayscale(.7)}
+  .monster.dead .mname{text-decoration:line-through;color:var(--muted)}
+  .mtop{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .mface{font-size:1.9rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+  .mname{font-weight:700;font-size:1rem}
+  .mtag{font-size:.62rem;color:var(--muted)}
+  .badge{font-size:.58rem;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:999px;text-transform:uppercase;margin-left:6px}
+  .badge.boss{background:var(--boss);color:#fff}
+  .badge.minion{background:#3a3357;color:#cdbff5}
+  .mright{margin-left:auto;text-align:right}
+  .mbal{font-weight:800;color:#fff;font-size:1.05rem}
+  .mthreat{font-size:.62rem;color:var(--hp2)}
+  .hpbar{height:14px;background:#120e1f;border:1px solid var(--border);border-radius:999px;overflow:hidden;position:relative}
+  .hpbar>i{display:block;height:100%;background:linear-gradient(90deg,var(--hp),var(--hp2));transition:width .7s cubic-bezier(.2,.8,.2,1)}
+  .hpbar .txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;text-shadow:0 1px 2px #000}
+  .mfoot{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-size:.68rem;color:var(--muted)}
+  .mfoot a{color:var(--gold);cursor:pointer;text-decoration:none;border-bottom:1px dotted var(--gold)}
+  .dead-stamp{position:absolute;top:8px;right:10px;font-size:.7rem;font-weight:900;color:var(--xp2);border:2px solid var(--xp2);border-radius:6px;padding:1px 6px;transform:rotate(8deg);letter-spacing:1px}
+  .next-target{outline:2px solid var(--gold);outline-offset:-1px;box-shadow:0 0 22px rgba(255,206,84,.18)}
+
+  /* Battle panel */
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  label{font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px}
+  input[type=number],input[type=text]{background:#120e1f;border:1px solid var(--border);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:1rem;width:100%}
+  .money-in{position:relative;flex:1;min-width:140px}
+  .money-in:before{content:"$";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .money-in input{padding-left:24px}
+  button{cursor:pointer;border:none;border-radius:12px;font-weight:800;font-size:.92rem;padding:12px 16px;color:#1a1020;background:linear-gradient(180deg,var(--gold),var(--gold2));box-shadow:0 6px 16px rgba(255,182,39,.25);transition:.15s;letter-spacing:.3px}
+  button:hover{transform:translateY(-1px)}
+  button:active{transform:translateY(1px)}
+  button.ghost{background:transparent;color:var(--gold);border:1px solid var(--border);box-shadow:none}
+  button.danger{background:linear-gradient(180deg,#ff6b81,#e0455e);color:#fff;box-shadow:none}
+  .hint{font-size:.72rem;color:var(--muted);margin-top:8px;line-height:1.5}
+  .hint b{color:var(--gold)}
+
+  /* attack plan preview */
+  .plan-line{display:flex;justify-content:space-between;font-size:.8rem;padding:6px 0;border-bottom:1px dashed var(--border)}
+  .plan-line:last-child{border:0}
+  .plan-line .amt{color:var(--xp2);font-weight:700}
+
+  /* log */
+  .log{max-height:200px;overflow:auto}
+  .log-item{display:flex;justify-content:space-between;gap:8px;font-size:.78rem;padding:8px 10px;border-radius:10px;background:var(--panel2);margin-bottom:6px}
+  .log-item small{color:var(--muted)}
+
+  /* slider */
+  input[type=range]{width:100%;accent-color:var(--gold)}
+  .proj{display:flex;gap:14px;justify-content:space-between;margin-top:10px}
+  .proj div{flex:1;text-align:center;background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:10px}
+  .proj b{display:block;font-size:1.3rem;color:var(--gold)}
+  .proj span{font-size:.62rem;color:var(--muted);text-transform:uppercase}
+
+  /* sync status pill */
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--panel2);color:var(--muted)}
+  .pill.ok{color:var(--xp2);border-color:rgba(95,250,160,.4)}
+  .pill.warn{color:var(--gold);border-color:rgba(255,206,84,.4)}
+  .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+  details summary{cursor:pointer;color:var(--gold);font-size:.85rem;font-weight:700;list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  details summary:before{content:"▸ ";transition:.2s}
+  details[open] summary:before{content:"▾ "}
+
+  /* toast + confetti */
+  #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(120%);background:linear-gradient(180deg,#2a2140,#1a1430);border:1px solid var(--gold);color:var(--ink);padding:14px 20px;border-radius:14px;box-shadow:var(--shadow);font-weight:700;z-index:50;transition:transform .4s cubic-bezier(.2,1.4,.4,1);max-width:90vw;text-align:center}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  #cv{position:fixed;inset:0;pointer-events:none;z-index:40}
+  .vsmall{font-size:.68rem;color:var(--muted)}
+  .center{text-align:center}
+  hr.sep{border:0;border-top:1px solid var(--border);margin:14px 0}
+  .victory{text-align:center;padding:24px}
+  .victory .gold-num{font-size:2rem}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div class="wrap">
+
+  <h1>⚔️ DEBT SLAYER</h1>
+  <p class="sub">The Quest to Vanquish the $17,816 Loan Horde</p>
+
+  <!-- WAR BANNER -->
+  <div class="panel warbar">
+    <div class="label">Remaining Horde HP</div>
+    <div class="gold-num" id="remaining">$0</div>
+    <div class="megabar"><i id="megafill"></i><div class="pct" id="megapct"></div></div>
+    <div class="vsmall" id="slainline">— slain so far —</div>
+    <div class="stats">
+      <div class="stat"><b id="st-pct">0%</b><span>Vanquished</span></div>
+      <div class="stat"><b id="st-dealt">$0</b><span>Damage Dealt</span></div>
+      <div class="stat"><b id="st-monsters">0/6</b><span>Monsters Slain</span></div>
+      <div class="stat"><b id="st-left">16</b><span>Paydays Left</span></div>
+    </div>
+  </div>
+
+  <!-- ARENA -->
+  <div class="panel">
+    <h2>🐉 The Battlefield <span class="vsmall" style="margin-left:auto;font-weight:400">attack order: deadliest first</span></h2>
+    <div id="arena"></div>
+  </div>
+
+  <!-- BATTLE -->
+  <div class="panel">
+    <h2>🗡️ Wage Battle (Log a Payday)</h2>
+    <div class="row">
+      <div class="money-in">
+        <label>Gold to strike with this payday</label>
+        <input type="number" id="payAmt" step="0.01" value="1115">
+      </div>
+      <div style="align-self:flex-end"><button onclick="attack()">⚔️ ATTACK</button></div>
+    </div>
+    <div class="hint">Auto-targets the deadliest monster first (avalanche). This is exactly what to type into Aidvantage's <b>“Specify for Each Loan”</b> screen 👇</div>
+    <div id="planPreview" style="margin-top:10px"></div>
+    <hr class="sep">
+    <div class="row" style="justify-content:space-between">
+      <strong style="font-size:.85rem;color:var(--muted)">📜 Battle Log</strong>
+      <span class="vsmall">Payday <b id="nextPd">1</b> next</span>
+    </div>
+    <div class="log" id="log" style="margin-top:8px"></div>
+  </div>
+
+  <!-- PLANNER -->
+  <div class="panel">
+    <h2>🔮 Oracle (What-If Planner)</h2>
+    <label>If I strike with <b id="simAmtLbl">$1,115</b> every payday…</label>
+    <input type="range" id="sim" min="200" max="3500" step="25" value="1115">
+    <div class="proj">
+      <div><b id="simPaydays">16</b><span>Paydays to Victory</span></div>
+      <div><b id="simMonths">8.0</b><span>≈ Months</span></div>
+      <div><b id="simDate">—</b><span>≈ Debt-Free</span></div>
+    </div>
+    <div class="hint">Drag to see how throwing extra gold shortens the quest. (Paydays land on the 15th &amp; 30th.)</div>
+  </div>
+
+  <!-- SYNC -->
+  <div class="panel">
+    <h2>☁️ Cloud Save & Sync</h2>
+    <div id="syncStatus" style="margin-bottom:10px"><span class="pill warn"><span class="dot"></span> Local only — not synced yet</span></div>
+    <details>
+      <summary>Set up JSONBin sync (paste once per device)</summary>
+      <div style="margin-top:12px">
+        <label>JSONBin Master Key (X-Master-Key)</label>
+        <input type="text" id="mkey" placeholder="$2a$10$....your key....">
+        <div style="height:10px"></div>
+        <label>Bin ID — leave blank on first device, then copy it to your other devices</label>
+        <input type="text" id="binid" placeholder="(blank = create a new cloud save)">
+        <div class="row" style="margin-top:12px">
+          <button onclick="setupSync()">🔗 Connect / Create</button>
+          <button class="ghost" onclick="pullCloud(true)">⟳ Load from Cloud</button>
+        </div>
+        <div class="hint" id="binIdShow"></div>
+        <div class="hint">Your key is stored only in <b>this browser</b> and sent straight to JSONBin — never anywhere else. Use a <b>private</b> bin. On a second device, paste the <b>same Master Key + the Bin ID</b> shown after first setup.</div>
+      </div>
+    </details>
+    <hr class="sep">
+    <div class="row">
+      <button class="ghost" onclick="backup()">💾 Backup (download)</button>
+      <button class="ghost" onclick="document.getElementById('restoreFile').click()">📂 Restore</button>
+      <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restore(event)">
+      <button class="danger" style="margin-left:auto" onclick="resetAll()">↺ Reset Quest</button>
+    </div>
+  </div>
+
+  <p class="center vsmall">Your real numbers live on Aidvantage — tap a monster’s “fix balance” to match it exactly anytime.</p>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============== DATA ============== */
+const DAY = 86400000;
+const START = {
+  // avalanche order: 6.8% bosses first, then 3.4% minions
+  // sub=true => subsidized: interest assumed covered during forbearance (no daily accrual unless you "fix balance")
+  loans:[
+    {id:"1-02", name:"Usuria, the Compounding Wraith", face:"👹", boss:true,  sub:false, rate:0.068, start:2186.59, bal:2186.59},
+    {id:"1-04", name:"Defaultus the Devourer",         face:"😈", boss:true,  sub:false, rate:0.068, start:2053.65, bal:2053.65},
+    {id:"1-05", name:"The Interest Imp",               face:"👺", boss:true,  sub:false, rate:0.068, start:1884.89, bal:1884.89},
+    {id:"1-07", name:"Subsidiax the Slow",             face:"🧟", boss:false, sub:true,  rate:0.034, start:4479.30, bal:4479.30},
+    {id:"1-06", name:"The Principal Golem",            face:"🗿", boss:false, sub:true,  rate:0.034, start:4424.00, bal:4424.00},
+    {id:"1-01", name:"Capital Creeper",                face:"🕷️", boss:false, sub:true,  rate:0.034, start:2787.69, bal:2787.69}
+  ],
+  paydays:[],          // {n, amount, when, hits:[{id,amt,slain}]}
+  nextPayday:1,
+  lastAccrued: todayISO(),
+  cfg:{mkey:"", binid:""}
+};
+let S = load();
+
+/* ============== HELPERS ============== */
+function todayISO(){return new Date().toISOString().slice(0,10);}
+function $(id){return document.getElementById(id);}
+function money(n){return "$"+(Math.round(n*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function money0(n){return "$"+Math.round(n).toLocaleString("en-US");}
+function totalBal(){return S.loans.reduce((a,l)=>a+Math.max(0,l.bal),0);}
+function totalStart(){return S.loans.reduce((a,l)=>a+l.start,0);}
+function totalDealt(){return S.paydays.reduce((a,p)=>a+p.amount,0);}
+function alive(){return S.loans.filter(l=>l.bal>0.005);}
+function slainCount(){return S.loans.filter(l=>l.bal<=0.005).length;}
+
+/* ============== INTEREST ACCRUAL (keeps it lifelike between visits) ============== */
+function accrue(){
+  const days = Math.floor((Date.parse(todayISO())-Date.parse(S.lastAccrued))/DAY);
+  if(days>0){
+    S.loans.forEach(l=>{ if(l.bal>0.005 && !l.sub){ l.bal += l.bal*(l.rate/365)*days; }});
+    S.lastAccrued = todayISO();
+    persist();
+  }
+}
+
+/* ============== RENDER ============== */
+function render(){
+  const tb=totalBal(), ts=totalStart(), dealt=totalDealt();
+  const pctPaid = Math.min(100,(1-tb/ts)*100);
+  $("remaining").textContent = money(tb);
+  $("megafill").style.width = pctPaid+"%";
+  $("megapct").textContent = pctPaid.toFixed(1)+"% cleared";
+  $("slainline").textContent = tb<=0.005 ? "👑 THE HORDE IS VANQUISHED 👑" : "— "+money0(ts-tb)+" of "+money0(ts)+" struck down —";
+  $("st-pct").textContent = pctPaid.toFixed(0)+"%";
+  $("st-dealt").textContent = money0(dealt);
+  $("st-monsters").textContent = slainCount()+"/"+S.loans.length;
+  const amt=parseFloat($("payAmt").value)||0;
+  $("st-left").textContent = amt>0 ? Math.ceil(tb/amt) : "∞";
+  $("nextPd").textContent = S.nextPayday;
+
+  // arena
+  const firstAlive = alive()[0];
+  $("arena").innerHTML = S.loans.map(l=>{
+    const dead=l.bal<=0.005;
+    const hp=Math.max(0,Math.min(100,(l.bal/l.start)*100));
+    const isTarget = firstAlive && l.id===firstAlive.id && !dead;
+    return `<div class="monster ${l.boss?'boss':''} ${dead?'dead':''} ${isTarget?'next-target':''}">
+      ${dead?'<div class="dead-stamp">SLAIN</div>':''}
+      <div class="mtop">
+        <span class="mface">${dead?'💀':l.face}</span>
+        <div>
+          <div class="mname">${l.name}
+            <span class="badge ${l.boss?'boss':'minion'}">${l.boss?'BOSS':'minion'}</span>
+          </div>
+          <div class="mtag">Loan ${l.id} · ${(l.rate*100).toFixed(1)}% threat/yr</div>
+        </div>
+        <div class="mright">
+          <div class="mbal">${dead?'DEFEATED':money(l.bal)}</div>
+          ${dead?'':(l.sub?`<div class="mthreat" style="color:var(--xp2)">🛡️ interest covered (forbearance)</div>`:`<div class="mthreat">+${money(l.bal*l.rate/365)}/day dmg to you</div>`)}
+        </div>
+      </div>
+      <div class="hpbar"><i style="width:${hp}%"></i><div class="txt">${dead?'0 HP':hp.toFixed(0)+'% HP'}</div></div>
+      <div class="mfoot">
+        <span>${isTarget?'🎯 current target':(dead?'✔ cleared':'awaiting its turn')}</span>
+        <a onclick="fixBalance('${l.id}')">fix balance</a>
+      </div>
+    </div>`;
+  }).join("");
+
+  // attack preview
+  renderPlan(amt);
+
+  // log
+  $("log").innerHTML = S.paydays.length? S.paydays.slice().reverse().map(p=>{
+    const hits=p.hits.map(h=>`${h.id} ${money(h.amt)}${h.slain?' 💀':''}`).join(" · ");
+    return `<div class="log-item"><div><b>Payday ${p.n}</b><br><small>${hits||'—'}</small></div><div style="text-align:right"><b>${money(p.amount)}</b><br><small>${p.when}</small></div></div>`;
+  }).join("") : `<div class="vsmall">No battles yet — strike your first blow above. ⚔️</div>`;
+
+  updateSim();
+  renderSyncStatus();
+}
+
+function planFor(amount){
+  let pool=amount, hits=[];
+  for(const l of S.loans){
+    if(pool<=0.005) break;
+    if(l.bal<=0.005) continue;
+    const pay=Math.min(pool, l.bal);
+    hits.push({id:l.id, name:l.name, amt:pay, slain:(l.bal-pay)<=0.005});
+    pool-=pay;
+  }
+  return {hits, leftover:pool};
+}
+function renderPlan(amount){
+  const {hits,leftover}=planFor(amount);
+  if(!hits.length){$("planPreview").innerHTML=`<div class="vsmall">Enter an amount to see your strike plan.</div>`;return;}
+  $("planPreview").innerHTML = hits.map(h=>
+    `<div class="plan-line"><span>→ Loan <b>${h.id}</b> ${h.slain?'<span style="color:var(--xp2)">(finishing blow 💀)</span>':''}</span><span class="amt">${money(h.amt)}</span></div>`
+  ).join("") + (leftover>0.005?`<div class="plan-line"><span>↩ overkill (refunds / rolls over)</span><span class="amt">${money(leftover)}</span></div>`:"");
+}
+
+/* ============== ACTIONS ============== */
+function attack(){
+  const amt=parseFloat($("payAmt").value)||0;
+  if(amt<=0){toast("Enter some gold first ⚔️");return;}
+  if(totalBal()<=0.005){toast("The horde is already vanquished! 👑");return;}
+  const {hits}=planFor(amt);
+  const slainNow=[];
+  hits.forEach(h=>{
+    const l=S.loans.find(x=>x.id===h.id);
+    l.bal=Math.max(0, l.bal-h.amt);
+    if(l.bal<=0.005 && h.slain) slainNow.push(l);
+  });
+  const realSpent=hits.reduce((a,h)=>a+h.amt,0);
+  S.paydays.push({n:S.nextPayday, amount:realSpent, when:todayISO(), hits});
+  S.nextPayday++;
+  persist();
+  render();
+  // celebrate
+  if(totalBal()<=0.005){ victory(); }
+  else if(slainNow.length){ slainNow.forEach((l,i)=>setTimeout(()=>monsterDown(l),i*600)); }
+  else { toast("💥 "+money(realSpent)+" of damage dealt!"); burst(40); }
+}
+
+function fixBalance(id){
+  const l=S.loans.find(x=>x.id===id);
+  const v=prompt(`Set the REAL current balance for ${l.name} (Loan ${l.id}) straight from Aidvantage:`, l.bal.toFixed(2));
+  if(v===null) return;
+  const n=parseFloat(v);
+  if(isNaN(n)||n<0){toast("That wasn't a valid number.");return;}
+  l.bal=n;
+  if(n>l.start) l.start=n; // keep HP bar sane if it grew
+  persist(); render();
+  toast("Balance synced to reality ✔");
+}
+
+function monsterDown(l){
+  toast("💀 "+l.name+" has been SLAIN!");
+  burst(120);
+}
+function victory(){
+  burst(300);
+  toast("👑 VICTORY! Every loan vanquished. You are DEBT-FREE! 👑");
+  document.querySelector(".warbar").insertAdjacentHTML("beforeend",
+    `<div class="victory"><div class="gold-num">🏆 QUEST COMPLETE 🏆</div><div class="vsmall">$17,816 horde defeated.</div></div>`);
+}
+
+/* ============== ORACLE / SIM ============== */
+function nextPaydayDates(count){
+  // paydays on the 15th and 30th
+  const out=[]; let d=new Date(); d.setHours(0,0,0,0);
+  while(out.length<count){
+    d.setDate(d.getDate()+1);
+    const day=d.getDate();
+    const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+    if(day===15 || day===30 || (day===last && last<30)){ out.push(new Date(d)); }
+  }
+  return out;
+}
+function updateSim(){
+  const amt=parseFloat($("sim").value)||0;
+  $("simAmtLbl").textContent=money0(amt);
+  const tb=totalBal();
+  const pds = amt>0? Math.ceil(tb/amt) : 999;
+  $("simPaydays").textContent = tb<=0.005? "0" : pds;
+  $("simMonths").textContent = (pds/2).toFixed(1);
+  if(tb<=0.005){$("simDate").textContent="DONE 🎉";return;}
+  const dates=nextPaydayDates(pds);
+  const fin=dates[dates.length-1];
+  $("simDate").textContent = fin? fin.toLocaleDateString("en-US",{month:"short",year:"numeric"}) : "—";
+}
+
+/* ============== PERSISTENCE ============== */
+const LS="debtSlayerSave_v1";
+function persist(){ localStorage.setItem(LS, JSON.stringify(S)); scheduleCloudPush(); }
+function load(){
+  try{
+    const raw=localStorage.getItem(LS);
+    if(raw){ const s=JSON.parse(raw); return mergeDefaults(s); }
+  }catch(e){}
+  return JSON.parse(JSON.stringify(START));
+}
+function mergeDefaults(s){
+  const base=JSON.parse(JSON.stringify(START));
+  return Object.assign(base, s, {cfg:Object.assign(base.cfg, s.cfg||{})});
+}
+
+/* ============== CLOUD (JSONBin) ============== */
+const API="https://api.jsonbin.io/v3";
+let pushTimer=null;
+function scheduleCloudPush(){
+  if(!S.cfg.mkey || !S.cfg.binid) return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(pushCloud, 1200);
+}
+async function setupSync(){
+  S.cfg.mkey=$("mkey").value.trim();
+  S.cfg.binid=$("binid").value.trim();
+  if(!S.cfg.mkey){toast("Paste your Master Key first.");return;}
+  try{
+    if(!S.cfg.binid){
+      toast("Creating your cloud save…");
+      const r=await fetch(API+"/b",{method:"POST",headers:{"Content-Type":"application/json","X-Master-Key":S.cfg.mkey,"X-Bin-Private":"true","X-Bin-Name":"debt-slayer-save"},body:JSON.stringify(S)});
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const j=await r.json();
+      S.cfg.binid=j.metadata.id;
+      $("binid").value=S.cfg.binid;
+    }
+    persist();
+    await pushCloud();
+    $("binIdShow").innerHTML="✅ Connected. <b>Bin ID:</b> <code>"+S.cfg.binid+"</code> — copy this to your other devices.";
+    toast("☁️ Cloud sync active!");
+    renderSyncStatus();
+  }catch(e){ toast("Sync failed: "+e.message); renderSyncStatus(); }
+}
+async function pushCloud(){
+  if(!S.cfg.mkey||!S.cfg.binid) return;
+  try{
+    const r=await fetch(API+"/b/"+S.cfg.binid,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":S.cfg.mkey},body:JSON.stringify(S)});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    renderSyncStatus(true);
+  }catch(e){ renderSyncStatus(false,e.message); }
+}
+async function pullCloud(announce){
+  if(!S.cfg.mkey||!S.cfg.binid){ if(announce) toast("Set up sync first."); return; }
+  try{
+    const r=await fetch(API+"/b/"+S.cfg.binid+"/latest",{headers:{"X-Master-Key":S.cfg.mkey}});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const j=await r.json();
+    const remote=j.record;
+    if(remote && remote.loans){
+      const keepCfg=S.cfg;
+      S=mergeDefaults(remote); S.cfg=keepCfg;
+      localStorage.setItem(LS,JSON.stringify(S));
+      accrue(); render();
+      if(announce) toast("☁️ Loaded latest from cloud.");
+    }
+  }catch(e){ if(announce) toast("Load failed: "+e.message); }
+}
+function renderSyncStatus(ok,msg){
+  const el=$("syncStatus");
+  if(!S.cfg.mkey||!S.cfg.binid){ el.innerHTML=`<span class="pill warn"><span class="dot"></span> Local only — not synced yet</span>`; return; }
+  if(ok===false){ el.innerHTML=`<span class="pill warn"><span class="dot"></span> Sync error: ${msg||'offline'}</span>`; return; }
+  el.innerHTML=`<span class="pill ok"><span class="dot"></span> Synced · Bin ${S.cfg.binid.slice(0,8)}…</span>`;
+}
+
+/* ============== BACKUP / RESTORE / RESET ============== */
+function backup(){
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="debt-slayer-save-"+todayISO()+".json";
+  a.click();
+  toast("💾 Backup downloaded.");
+}
+function restore(ev){
+  const f=ev.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ try{ const s=JSON.parse(rd.result); S=mergeDefaults(s); persist(); accrue(); render(); toast("📂 Quest restored."); }catch(e){ toast("That file couldn't be read."); } };
+  rd.readAsText(f);
+}
+function resetAll(){
+  if(!confirm("Reset the entire quest back to the starting $17,816 horde? (Your cloud key stays.)")) return;
+  const keepCfg=S.cfg;
+  S=JSON.parse(JSON.stringify(START)); S.cfg=keepCfg; S.lastAccrued=todayISO();
+  persist(); render(); toast("↺ Quest reset.");
+}
+
+/* ============== TOAST + CONFETTI ============== */
+let toastTimer;
+function toast(msg){
+  const t=$("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),3200);
+}
+const cv=$("cv"), ctx=cv.getContext("2d"); let parts=[];
+function fit(){cv.width=innerWidth;cv.height=innerHeight;} fit(); addEventListener("resize",fit);
+function burst(n){
+  const cols=["#ffce54","#ff6b81","#5ffaa0","#4aa3ff","#fff"];
+  for(let i=0;i<n;i++){parts.push({x:cv.width/2+(Math.random()-.5)*200,y:cv.height/2,vx:(Math.random()-.5)*12,vy:(Math.random()-1)*12-4,g:.35,life:90+Math.random()*40,c:cols[i%cols.length],s:4+Math.random()*5,r:Math.random()*6});}
+  if(!raf) loop();
+}
+let raf=null;
+function loop(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  parts.forEach(p=>{p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.life--;p.r+=.2;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.globalAlpha=Math.max(0,p.life/100);ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s);ctx.restore();});
+  parts=parts.filter(p=>p.life>0 && p.y<cv.height+40);
+  if(parts.length) raf=requestAnimationFrame(loop); else {raf=null;ctx.clearRect(0,0,cv.width,cv.height);}
+}
+
+/* ============== WIRE-UP ============== */
+$("payAmt").addEventListener("input",()=>{renderPlan(parseFloat($("payAmt").value)||0); $("st-left").textContent=(parseFloat($("payAmt").value)>0)?Math.ceil(totalBal()/parseFloat($("payAmt").value)):"∞";});
+$("sim").addEventListener("input",updateSim);
+$("mkey").value=S.cfg.mkey||""; $("binid").value=S.cfg.binid||"";
+
+accrue();
+render();
+// on launch, if synced, pull the latest so devices stay in step
+pullCloud(false);
+</script>
+</body>
+</html>
