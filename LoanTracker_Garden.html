@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍄 Grove Keeper — Debt Garden</title>
+<style>
+  :root{
+    --bg:#0e140d; --bg2:#131a11; --panel:#18211a; --panel2:#1f2a1e;
+    --ink:#eae7d6; --muted:#9aa888;
+    --moss:#7cc36a; --moss2:#a6e08a;
+    --honey:#e3b24c; --honey2:#f0c662;
+    --shroom:#cf6a45; --shroom2:#e8845c;
+    --bark:#44372a; --border:#2c3a28;
+    --shadow:0 10px 30px rgba(0,0,0,.5);
+    --r:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:radial-gradient(1200px 800px at 50% -10%,#1c2a18 0%,var(--bg) 60%);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+  .wrap{max-width:760px;margin:0 auto;padding:18px 14px 60px}
+  h1{font-size:1.7rem;margin:.2em 0 .1em;text-align:center;letter-spacing:.5px;
+     background:linear-gradient(180deg,#fff,var(--moss2));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 18px rgba(124,195,106,.25)}
+  .sub{text-align:center;color:var(--muted);margin:0 0 16px;font-size:.85rem}
+  .panel{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--border);border-radius:var(--r);padding:16px;margin:14px 0;box-shadow:var(--shadow)}
+  .panel h2{margin:0 0 12px;font-size:1.05rem;color:var(--honey);display:flex;align-items:center;gap:8px}
+
+  .warbar{text-align:center}
+  .big-num{font-size:2.4rem;font-weight:800;color:var(--moss2);text-shadow:0 2px 14px rgba(124,195,106,.3);line-height:1.1}
+  .warbar .label{color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:1.5px}
+  .megabar{height:22px;background:#0c120b;border:1px solid var(--border);border-radius:999px;overflow:hidden;margin:14px 0 6px;position:relative}
+  .megabar>i{display:block;height:100%;background:linear-gradient(90deg,var(--moss),var(--moss2));width:0;transition:width .8s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 16px rgba(124,195,106,.6)}
+  .megabar .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;text-shadow:0 1px 2px #000}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:10px 6px;text-align:center}
+  .stat b{display:block;font-size:1.05rem;color:#fff}
+  .stat span{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  @media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}.big-num{font-size:1.9rem}}
+
+  /* plots */
+  .plot{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin:10px 0;position:relative;overflow:hidden;transition:.3s}
+  .plot.stubborn{border-color:var(--shroom);box-shadow:0 0 0 1px rgba(207,106,69,.22),0 0 24px rgba(207,106,69,.10) inset}
+  .plot.bloomed{border-color:var(--moss);box-shadow:0 0 0 1px rgba(124,195,106,.25),0 0 24px rgba(124,195,106,.12) inset}
+  .mtop{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .mface{font-size:1.9rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+  .mname{font-weight:700;font-size:1rem}
+  .mtag{font-size:.62rem;color:var(--muted)}
+  .badge{font-size:.56rem;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:999px;text-transform:uppercase;margin-left:6px}
+  .badge.stubborn{background:var(--shroom);color:#fff}
+  .badge.calm{background:#33422d;color:#c7dcb3}
+  .badge.bloom{background:var(--moss);color:#10160f}
+  .mright{margin-left:auto;text-align:right}
+  .mbal{font-weight:800;color:#fff;font-size:1.05rem}
+  .mthreat{font-size:.62rem;color:var(--shroom2)}
+  .mthreat.calm{color:var(--moss2)}
+  .growbar{height:14px;background:#0c120b;border:1px solid var(--border);border-radius:999px;overflow:hidden;position:relative}
+  .growbar>i{display:block;height:100%;background:linear-gradient(90deg,var(--moss),var(--moss2));transition:width .7s cubic-bezier(.2,.8,.2,1)}
+  .growbar .txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;text-shadow:0 1px 2px #000}
+  .mfoot{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-size:.68rem;color:var(--muted)}
+  .mfoot a{color:var(--honey);cursor:pointer;text-decoration:none;border-bottom:1px dotted var(--honey);margin-left:10px}
+  .bloom-stamp{position:absolute;top:8px;right:10px;font-size:.7rem;font-weight:900;color:var(--moss2);border:2px solid var(--moss2);border-radius:6px;padding:1px 6px;transform:rotate(-6deg);letter-spacing:1px}
+  .next-target{outline:2px solid var(--honey);outline-offset:-1px;box-shadow:0 0 22px rgba(227,178,76,.18)}
+  .empty{text-align:center;color:var(--muted);padding:24px 10px;font-size:.9rem;line-height:1.6}
+
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  label{font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px}
+  input[type=number],input[type=text]{background:#0c120b;border:1px solid var(--border);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:1rem;width:100%}
+  .money-in{position:relative;flex:1;min-width:140px}
+  .money-in:before{content:"$";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .money-in input{padding-left:24px}
+  button{cursor:pointer;border:none;border-radius:12px;font-weight:800;font-size:.92rem;padding:12px 16px;color:#10160f;background:linear-gradient(180deg,var(--moss2),var(--moss));box-shadow:0 6px 16px rgba(124,195,106,.22);transition:.15s;letter-spacing:.3px}
+  button:hover{transform:translateY(-1px)} button:active{transform:translateY(1px)}
+  button.ghost{background:transparent;color:var(--honey);border:1px solid var(--border);box-shadow:none}
+  button.honey{background:linear-gradient(180deg,var(--honey2),var(--honey));color:#241a07}
+  button.danger{background:linear-gradient(180deg,var(--shroom2),var(--shroom));color:#fff;box-shadow:none}
+  .hint{font-size:.72rem;color:var(--muted);margin-top:8px;line-height:1.5}
+  .hint b{color:var(--honey)}
+
+  .plan-line{display:flex;justify-content:space-between;font-size:.8rem;padding:6px 0;border-bottom:1px dashed var(--border)}
+  .plan-line:last-child{border:0}
+  .plan-line .amt{color:var(--moss2);font-weight:700}
+
+  .log{max-height:200px;overflow:auto}
+  .log-item{display:flex;justify-content:space-between;gap:8px;font-size:.78rem;padding:8px 10px;border-radius:10px;background:var(--panel2);margin-bottom:6px}
+  .log-item small{color:var(--muted)}
+
+  input[type=range]{width:100%;accent-color:var(--honey)}
+  .proj{display:flex;gap:14px;justify-content:space-between;margin-top:10px}
+  .proj div{flex:1;text-align:center;background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:10px}
+  .proj b{display:block;font-size:1.3rem;color:var(--honey)}
+  .proj span{font-size:.62rem;color:var(--muted);text-transform:uppercase}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--panel2);color:var(--muted)}
+  .pill.ok{color:var(--moss2);border-color:rgba(166,224,138,.4)}
+  .pill.warn{color:var(--honey);border-color:rgba(227,178,76,.4)}
+  .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+  details summary{cursor:pointer;color:var(--honey);font-size:.85rem;font-weight:700;list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  details summary:before{content:"▸ ";transition:.2s} details[open] summary:before{content:"▾ "}
+
+  /* modal */
+  #modal{position:fixed;inset:0;background:rgba(5,8,4,.7);display:none;align-items:center;justify-content:center;z-index:60;padding:16px}
+  #modal.show{display:flex}
+  .card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--border);border-radius:18px;padding:20px;max-width:420px;width:100%;box-shadow:var(--shadow)}
+  .card h3{margin:0 0 14px;color:var(--honey)}
+  .field{margin-bottom:12px}
+  .check{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--ink)}
+  .check input{width:auto}
+
+  #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(120%);background:linear-gradient(180deg,#1e2a18,#16210f);border:1px solid var(--moss);color:var(--ink);padding:14px 20px;border-radius:14px;box-shadow:var(--shadow);font-weight:700;z-index:80;transition:transform .4s cubic-bezier(.2,1.4,.4,1);max-width:90vw;text-align:center}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  #cv{position:fixed;inset:0;pointer-events:none;z-index:70}
+  .vsmall{font-size:.68rem;color:var(--muted)} .center{text-align:center}
+  hr.sep{border:0;border-top:1px solid var(--border);margin:14px 0}
+  .victory{text-align:center;padding:24px}
+  .victory .big-num{font-size:2rem}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div class="wrap">
+
+  <h1>🍄 GROVE KEEPER</h1>
+  <p class="sub">Clear the debt-blight and let your grove bloom 🌿</p>
+
+  <div class="panel warbar">
+    <div class="label">Blight Remaining</div>
+    <div class="big-num" id="remaining">$0</div>
+    <div class="megabar"><i id="megafill"></i><div class="pct" id="megapct"></div></div>
+    <div class="vsmall" id="clearedline">— your grove awaits —</div>
+    <div class="stats">
+      <div class="stat"><b id="st-pct">0%</b><span>Grove Restored</span></div>
+      <div class="stat"><b id="st-dealt">$0</b><span>Tended</span></div>
+      <div class="stat"><b id="st-bloom">0/0</b><span>Plots Bloomed</span></div>
+      <div class="stat"><b id="st-left">—</b><span>Paydays Left</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>🌱 The Garden <span class="vsmall" style="margin-left:auto;font-weight:400">tend order: most-stubborn first</span></h2>
+    <div id="garden"></div>
+    <div style="margin-top:12px"><button class="ghost" onclick="openPlot()">＋ Add a plot (loan)</button></div>
+  </div>
+
+  <div class="panel">
+    <h2>💧 Tend the Garden (Log a Payment)</h2>
+    <div class="row">
+      <div class="money-in">
+        <label>Water to pour this payday</label>
+        <input type="number" id="payAmt" step="0.01" value="530.79">
+      </div>
+      <div style="align-self:flex-end"><button onclick="tend()">🌿 TEND</button></div>
+    </div>
+    <div class="hint">Auto-tends the most-stubborn plot first (highest interest = avalanche). This is exactly what to type into your loan servicer's <b>per-loan payment screen</b> 👇</div>
+    <div id="planPreview" style="margin-top:10px"></div>
+    <hr class="sep">
+    <div class="row" style="justify-content:space-between">
+      <strong style="font-size:.85rem;color:var(--muted)">📖 Garden Journal</strong>
+      <span class="vsmall">Payday <b id="nextPd">1</b> next</span>
+    </div>
+    <div class="log" id="log" style="margin-top:8px"></div>
+  </div>
+
+  <div class="panel">
+    <h2>🌾 Almanac (What-If Planner)</h2>
+    <label>If I pour <b id="simAmtLbl">$0</b> every payday…</label>
+    <input type="range" id="sim" min="50" max="3500" step="25" value="530">
+    <div class="proj">
+      <div><b id="simPaydays">—</b><span>Paydays to Bloom</span></div>
+      <div><b id="simMonths">—</b><span>≈ Months</span></div>
+      <div><b id="simYears">—</b><span>≈ Years</span></div>
+    </div>
+    <div class="hint">Drag to see how a little extra water speeds the whole grove to full bloom. (Assumes ~2 paydays a month.)</div>
+  </div>
+
+  <div class="panel">
+    <h2>☁️ Cloud Save & Sync</h2>
+    <div id="syncStatus" style="margin-bottom:10px"><span class="pill warn"><span class="dot"></span> Local only — not synced yet</span></div>
+    <details>
+      <summary>Set up JSONBin sync (paste once per device)</summary>
+      <div style="margin-top:12px">
+        <label>JSONBin Master Key (X-Master-Key)</label>
+        <input type="text" id="mkey" placeholder="$2a$10$....your key....">
+        <div style="height:10px"></div>
+        <label>Bin ID — leave blank on first device, then copy it to your other devices</label>
+        <input type="text" id="binid" placeholder="(blank = create a new cloud save)">
+        <div class="row" style="margin-top:12px">
+          <button onclick="setupSync()">🔗 Connect / Create</button>
+          <button class="ghost" onclick="manualLoad()">⟳ Load from Cloud</button>
+        </div>
+        <div class="hint" id="binIdShow"></div>
+        <div class="hint">Use your <b>own</b> JSONBin bin (separate from anyone else's). Your key stays only in <b>this browser</b>. On a second device, paste the <b>same Master Key + Bin ID</b>.</div>
+      </div>
+    </details>
+    <hr class="sep">
+    <div class="row">
+      <button class="ghost" onclick="backup()">💾 Backup (download)</button>
+      <button class="ghost" onclick="document.getElementById('restoreFile').click()">📂 Restore</button>
+      <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restore(event)">
+      <button class="danger" style="margin-left:auto" onclick="resetAll()">↺ Reset Grove</button>
+    </div>
+  </div>
+
+  <p class="center vsmall">Tap a plot's “edit” to fix its balance to match your servicer anytime.</p>
+  <p class="center vsmall" style="opacity:.55">build v1 · garden</p>
+</div>
+
+<!-- Add/Edit plot modal -->
+<div id="modal">
+  <div class="card">
+    <h3 id="modalTitle">Add a plot</h3>
+    <div class="field"><label>Name (e.g. “Sallie Loan #3”, or name it a plant!)</label><input type="text" id="f_name" placeholder="Toadstool Loan"></div>
+    <div class="field"><label>Current balance owed</label><input type="number" id="f_bal" step="0.01" placeholder="0.00"></div>
+    <div class="field"><label>Interest rate (% per year)</label><input type="number" id="f_rate" step="0.001" placeholder="6.8"></div>
+    <div class="field"><label class="check"><input type="checkbox" id="f_sub"> Subsidized &amp; interest currently covered (no daily growth)</label></div>
+    <div class="row" style="margin-top:16px">
+      <button onclick="savePlot()">🌱 Save plot</button>
+      <button class="ghost" onclick="closePlot()">Cancel</button>
+      <button class="danger" id="delBtn" style="margin-left:auto;display:none" onclick="deletePlot()">Remove</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============== DATA ============== */
+const DAY=86400000;
+const PLANTS=["🍄","🌿","🌱","🌾","🌵","🪴","🌻","🪻","🍂","🌳","🌼","🍁"];
+const START={
+  loans:[
+    // Both Direct Unsubsidized, active repayment, interest accrues daily (sub:false).
+    // bal = current OUTSTANDING (principal + unpaid interest) from CRI as of 06/15/2026.
+    // start = estimated balance when she began tracking (~$44,181 total), split proportionally,
+    //         so the growth bars reflect her real progress so far. Use "edit" to refine anytime.
+    {id:"AB", name:"Group AB · Direct Unsub", emoji:"🍄", sub:false, rate:0.0783, start:16685.08, bal:13143.95},
+    {id:"AA", name:"Group AA · Direct Unsub", emoji:"🌿", sub:false, rate:0.0680, start:27496.18, bal:21660.57}
+  ],
+  paydays:[
+    {n:1, amount:11485.95, when:"2026-06-06", hits:[{name:"Prior payments (before tracker)", amt:11485.95, bloom:false}]}
+  ],
+  nextPayday:2,
+  lastAccrued:todayISO(),
+  seq:2
+};
+let S=load();
+
+/* keys in a SEPARATE slot — never synced to cloud, never collides with other trackers */
+const CFG_KEY="groveKeeperCfg_v1";
+let CFG=(()=>{ try{return JSON.parse(localStorage.getItem(CFG_KEY))||{mkey:"",binid:""}}catch(e){return{mkey:"",binid:""}} })();
+function saveCfg(){ localStorage.setItem(CFG_KEY,JSON.stringify(CFG)); }
+
+/* ============== HELPERS ============== */
+function todayISO(){return new Date().toISOString().slice(0,10);}
+function $(id){return document.getElementById(id);}
+function money(n){return "$"+(Math.round(n*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function money0(n){return "$"+Math.round(n).toLocaleString("en-US");}
+function totalBal(){return S.loans.reduce((a,l)=>a+Math.max(0,l.bal),0);}
+function totalStart(){return S.loans.reduce((a,l)=>a+l.start,0);}
+function totalDealt(){return S.paydays.reduce((a,p)=>a+p.amount,0);}
+function alive(){return S.loans.filter(l=>l.bal>0.005);}
+function bloomCount(){return S.loans.filter(l=>l.bal<=0.005).length;}
+function sortLoans(){ S.loans.sort((a,b)=> b.rate-a.rate || b.bal-a.bal); }
+
+/* ============== INTEREST ACCRUAL ============== */
+function accrue(){
+  const days=Math.floor((Date.parse(todayISO())-Date.parse(S.lastAccrued))/DAY);
+  if(days>0){
+    S.loans.forEach(l=>{ if(l.bal>0.005 && !l.sub){ l.bal+=l.bal*(l.rate/365)*days; }});
+    S.lastAccrued=todayISO(); persist();
+  }
+}
+
+/* ============== ADD / EDIT PLOTS ============== */
+let editingId=null;
+function openPlot(id){
+  editingId=id||null;
+  const l=id? S.loans.find(x=>x.id===id):null;
+  $("modalTitle").textContent=l?"Edit plot":"Add a plot";
+  $("f_name").value=l?l.name:"";
+  $("f_bal").value=l?l.bal.toFixed(2):"";
+  $("f_rate").value=l?(l.rate*100):"";
+  $("f_sub").checked=l?!!l.sub:false;
+  $("delBtn").style.display=l?"inline-block":"none";
+  $("modal").classList.add("show");
+}
+function closePlot(){ $("modal").classList.remove("show"); editingId=null; }
+function savePlot(){
+  const name=$("f_name").value.trim()||"Unnamed plot";
+  const bal=parseFloat($("f_bal").value);
+  const rate=parseFloat($("f_rate").value);
+  if(isNaN(bal)||bal<0){toast("Enter a valid balance.");return;}
+  if(isNaN(rate)||rate<0){toast("Enter a valid interest rate.");return;}
+  const sub=$("f_sub").checked;
+  if(editingId){
+    const l=S.loans.find(x=>x.id===editingId);
+    l.name=name; l.bal=bal; l.rate=rate/100; l.sub=sub;
+    if(bal>l.start) l.start=bal;
+  }else{
+    S.loans.push({id:"p"+(++S.seq)+Date.now().toString(36), name, emoji:PLANTS[S.loans.length%PLANTS.length], sub, rate:rate/100, start:bal, bal});
+  }
+  sortLoans(); persist(); render(); closePlot();
+  toast(editingId?"Plot updated 🌿":"Plot planted 🌱");
+}
+function deletePlot(){
+  if(!editingId) return;
+  if(!confirm("Remove this plot from your garden?")) return;
+  S.loans=S.loans.filter(x=>x.id!==editingId);
+  sortLoans(); persist(); render(); closePlot(); toast("Plot removed.");
+}
+
+/* ============== RENDER ============== */
+function render(){
+  const tb=totalBal(), ts=totalStart(), dealt=totalDealt();
+  const pctPaid= ts>0? Math.min(100,(1-tb/ts)*100):0;
+  $("remaining").textContent=money(tb);
+  $("megafill").style.width=pctPaid+"%";
+  $("megapct").textContent=pctPaid.toFixed(1)+"% restored";
+  $("clearedline").textContent = ts<=0? "— add your loans below to begin 🌱" : (tb<=0.005? "🌸 THE GROVE IS IN FULL BLOOM 🌸" : "— "+money0(ts-tb)+" of "+money0(ts)+" cleared —");
+  $("st-pct").textContent=pctPaid.toFixed(0)+"%";
+  $("st-dealt").textContent=money0(dealt);
+  $("st-bloom").textContent=bloomCount()+"/"+S.loans.length;
+  const amt=parseFloat($("payAmt").value)||0;
+  $("st-left").textContent= (amt>0 && tb>0)? Math.ceil(tb/amt):"—";
+  $("nextPd").textContent=S.nextPayday;
+
+  const firstAlive=alive()[0];
+  if(!S.loans.length){
+    $("garden").innerHTML=`<div class="empty">🌿 Your garden is empty.<br>Tap <b>＋ Add a plot</b> to plant your first loan, then start tending it to full bloom.</div>`;
+  }else{
+    $("garden").innerHTML=S.loans.map(l=>{
+      const bloomed=l.bal<=0.005;
+      const grow= l.start>0? Math.max(0,Math.min(100,(1-l.bal/l.start)*100)):0;
+      const isTarget= firstAlive && l.id===firstAlive.id && !bloomed;
+      return `<div class="plot ${l.sub?'':(bloomed?'':'stubborn')} ${bloomed?'bloomed':''} ${isTarget?'next-target':''}">
+        ${bloomed?'<div class="bloom-stamp">BLOOMED</div>':''}
+        <div class="mtop">
+          <span class="mface">${bloomed?'🌼':l.emoji}</span>
+          <div>
+            <div class="mname">${l.name}
+              ${bloomed?'<span class="badge bloom">thriving</span>':(l.sub?'<span class="badge calm">dormant</span>':'<span class="badge stubborn">stubborn</span>')}
+            </div>
+            <div class="mtag">${(l.rate*100).toFixed(2)}% / yr</div>
+          </div>
+          <div class="mright">
+            <div class="mbal">${bloomed?'CLEARED':money(l.bal)}</div>
+            ${bloomed?'':(l.sub?`<div class="mthreat calm">🛡️ dormant (interest covered)</div>`:`<div class="mthreat">blight +${money(l.bal*l.rate/365)}/day</div>`)}
+          </div>
+        </div>
+        <div class="growbar"><i style="width:${grow}%"></i><div class="txt">${grow.toFixed(0)}% grown</div></div>
+        <div class="mfoot">
+          <span>${isTarget?'🎯 tending now':(bloomed?'✔ in bloom':'awaiting its turn')}</span>
+          <span><a onclick="openPlot('${l.id}')">edit</a></span>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  renderPlan(amt);
+
+  $("log").innerHTML=S.paydays.length? S.paydays.slice().reverse().map(p=>{
+    const hits=p.hits.map(h=>`${h.name} ${money(h.amt)}${h.bloom?' 🌼':''}`).join(" · ");
+    return `<div class="log-item"><div><b>Payday ${p.n}</b><br><small>${hits||'—'}</small></div><div style="text-align:right"><b>${money(p.amount)}</b><br><small>${p.when}</small></div></div>`;
+  }).join("") : `<div class="vsmall">No tending yet — pour your first water above. 💧</div>`;
+
+  updateSim();
+  renderSyncStatus();
+}
+
+function planFor(amount){
+  let pool=amount, hits=[];
+  for(const l of S.loans){
+    if(pool<=0.005) break;
+    if(l.bal<=0.005) continue;
+    const pay=Math.min(pool,l.bal);
+    hits.push({id:l.id, name:l.name, amt:pay, bloom:(l.bal-pay)<=0.005});
+    pool-=pay;
+  }
+  return {hits, leftover:pool};
+}
+function renderPlan(amount){
+  if(!alive().length){$("planPreview").innerHTML=`<div class="vsmall">Add a plot to start tending.</div>`;return;}
+  const {hits,leftover}=planFor(amount);
+  if(!hits.length){$("planPreview").innerHTML=`<div class="vsmall">Enter an amount to see your tending plan.</div>`;return;}
+  $("planPreview").innerHTML=hits.map(h=>
+    `<div class="plan-line"><span>→ <b>${h.name}</b> ${h.bloom?'<span style="color:var(--moss2)">(full bloom 🌼)</span>':''}</span><span class="amt">${money(h.amt)}</span></div>`
+  ).join("")+(leftover>0.005?`<div class="plan-line"><span>↩ extra (rolls over / refunds)</span><span class="amt">${money(leftover)}</span></div>`:"");
+}
+
+/* ============== ACTIONS ============== */
+function tend(){
+  const amt=parseFloat($("payAmt").value)||0;
+  if(!alive().length){toast("Add a plot first 🌱");return;}
+  if(amt<=0){toast("Pour some water first 💧");return;}
+  const {hits}=planFor(amt);
+  const bloomNow=[];
+  hits.forEach(h=>{ const l=S.loans.find(x=>x.id===h.id); l.bal=Math.max(0,l.bal-h.amt); if(l.bal<=0.005&&h.bloom) bloomNow.push(l); });
+  const spent=hits.reduce((a,h)=>a+h.amt,0);
+  S.paydays.push({n:S.nextPayday, amount:spent, when:todayISO(), hits});
+  S.nextPayday++; persist(); render();
+  if(totalBal()<=0.005){ victory(); }
+  else if(bloomNow.length){ bloomNow.forEach((l,i)=>setTimeout(()=>plotBloom(l),i*600)); }
+  else { toast("🌿 "+money(spent)+" of water poured!"); burst(40); }
+}
+function plotBloom(l){ toast("🌼 "+l.name+" has BLOOMED!"); burst(120); }
+function victory(){
+  burst(300);
+  toast("🌸 Your entire grove is in full bloom — you're DEBT-FREE! 🌸");
+  document.querySelector(".warbar").insertAdjacentHTML("beforeend",
+    `<div class="victory"><div class="big-num">🌷 GROVE RESTORED 🌷</div><div class="vsmall">Every loan cleared.</div></div>`);
+}
+
+/* ============== ALMANAC ============== */
+function updateSim(){
+  const amt=parseFloat($("sim").value)||0;
+  $("simAmtLbl").textContent=money0(amt);
+  const tb=totalBal();
+  if(tb<=0.005||amt<=0){ $("simPaydays").textContent= tb<=0.005?"0":"—"; $("simMonths").textContent="—"; $("simYears").textContent="—"; return; }
+  const pds=Math.ceil(tb/amt);
+  $("simPaydays").textContent=pds;
+  $("simMonths").textContent=(pds/2).toFixed(1);
+  $("simYears").textContent=(pds/24).toFixed(1);
+}
+
+/* ============== PERSISTENCE ============== */
+const LS="groveKeeperSave_v1";
+function persist(){ localStorage.setItem(LS,JSON.stringify(S)); scheduleCloudPush(); }
+function load(){
+  try{ const raw=localStorage.getItem(LS); if(raw) return mergeDefaults(JSON.parse(raw)); }catch(e){}
+  return JSON.parse(JSON.stringify(START));
+}
+function mergeDefaults(s){ return Object.assign(JSON.parse(JSON.stringify(START)), s); }
+
+/* ============== CLOUD (JSONBin) ============== */
+const API="https://api.jsonbin.io/v3";
+let pushTimer=null;
+function scheduleCloudPush(){ if(!CFG.mkey||!CFG.binid) return; clearTimeout(pushTimer); pushTimer=setTimeout(pushCloud,1200); }
+function syncKeysFromInputs(){ const mk=$("mkey").value.trim(),bn=$("binid").value.trim(); if(mk)CFG.mkey=mk; if(bn)CFG.binid=bn; saveCfg(); }
+async function httpErr(r){ let b=""; try{b=await r.text();}catch(e){} return new Error("HTTP "+r.status+(b?(" — "+b.slice(0,120)):"")); }
+async function setupSync(){
+  syncKeysFromInputs();
+  if(!CFG.mkey){toast("Paste your Master Key first.");return;}
+  try{
+    if(!CFG.binid){
+      toast("Creating your cloud save…");
+      const r=await fetch(API+"/b",{method:"POST",headers:{"Content-Type":"application/json","X-Master-Key":CFG.mkey,"X-Bin-Private":"true","X-Bin-Name":"grove-keeper-save"},body:JSON.stringify(S)});
+      if(!r.ok) throw await httpErr(r);
+      const j=await r.json(); CFG.binid=j.metadata.id; $("binid").value=CFG.binid; saveCfg();
+    }
+    await pushCloud();
+    $("binIdShow").innerHTML="✅ Connected. <b>Bin ID:</b> <code>"+CFG.binid+"</code> — copy this to your other devices.";
+    toast("☁️ Cloud sync active!"); renderSyncStatus();
+  }catch(e){ console.error(e); toast("Sync failed: "+e.message); renderSyncStatus(false,e.message); }
+}
+async function pushCloud(){
+  if(!CFG.mkey||!CFG.binid) return;
+  try{
+    const r=await fetch(API+"/b/"+CFG.binid,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":CFG.mkey,"X-Bin-Versioning":"false"},body:JSON.stringify(S)});
+    if(!r.ok) throw await httpErr(r); renderSyncStatus(true);
+  }catch(e){ console.error(e); renderSyncStatus(false,e.message); }
+}
+async function manualLoad(){ syncKeysFromInputs(); if(!CFG.mkey||!CFG.binid){toast("Paste both your Master Key and Bin ID first.");return;} await pullCloud(true); }
+async function pullCloud(announce){
+  if(!CFG.mkey||!CFG.binid){ if(announce) toast("Set up sync first."); return; }
+  try{
+    const r=await fetch(API+"/b/"+CFG.binid+"/latest",{headers:{"X-Master-Key":CFG.mkey,"X-Bin-Meta":"false"}});
+    if(!r.ok) throw await httpErr(r);
+    const j=await r.json();
+    const remote=(j&&j.loans!==undefined)?j:(j&&j.record?j.record:null);
+    if(remote && remote.loans!==undefined){
+      S=mergeDefaults(remote); localStorage.setItem(LS,JSON.stringify(S)); accrue(); render();
+      if(announce) toast("☁️ Loaded latest from cloud.");
+    }else if(announce){ toast("Connected, but no saved grove found in that bin yet."); }
+  }catch(e){ console.error(e); if(announce) toast("Load failed: "+e.message); renderSyncStatus(false,e.message); }
+}
+function renderSyncStatus(ok,msg){
+  const el=$("syncStatus");
+  if(!CFG.mkey||!CFG.binid){ el.innerHTML=`<span class="pill warn"><span class="dot"></span> Local only — not synced yet</span>`; return; }
+  if(ok===false){ el.innerHTML=`<span class="pill warn"><span class="dot"></span> Sync error: ${msg||'offline'}</span>`; return; }
+  el.innerHTML=`<span class="pill ok"><span class="dot"></span> Synced · Bin ${CFG.binid.slice(0,8)}…</span>`;
+}
+
+/* ============== BACKUP / RESTORE / RESET ============== */
+function backup(){
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="grove-keeper-save-"+todayISO()+".json"; a.click();
+  toast("💾 Backup downloaded.");
+}
+function restore(ev){
+  const f=ev.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ try{ S=mergeDefaults(JSON.parse(rd.result)); persist(); accrue(); render(); toast("📂 Grove restored."); }catch(e){ toast("That file couldn't be read."); } };
+  rd.readAsText(f);
+}
+function resetAll(){
+  if(!confirm("Reset the whole grove? This removes ALL plots and history. (Your cloud keys stay.)")) return;
+  S=JSON.parse(JSON.stringify(START)); S.lastAccrued=todayISO(); persist(); render(); toast("↺ Grove reset.");
+}
+
+/* ============== TOAST + CONFETTI ============== */
+let toastTimer;
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),3200); }
+const cv=$("cv"),ctx=cv.getContext("2d"); let parts=[];
+function fit(){cv.width=innerWidth;cv.height=innerHeight;} fit(); addEventListener("resize",fit);
+function burst(n){
+  const cols=["#7cc36a","#a6e08a","#e3b24c","#cf6a45","#efe9d8"];
+  for(let i=0;i<n;i++){parts.push({x:cv.width/2+(Math.random()-.5)*200,y:cv.height/2,vx:(Math.random()-.5)*12,vy:(Math.random()-1)*12-4,g:.32,life:90+Math.random()*40,c:cols[i%cols.length],s:4+Math.random()*5,r:Math.random()*6});}
+  if(!raf) loop();
+}
+let raf=null;
+function loop(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  parts.forEach(p=>{p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.life--;p.r+=.2;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.globalAlpha=Math.max(0,p.life/100);ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s);ctx.restore();});
+  parts=parts.filter(p=>p.life>0&&p.y<cv.height+40);
+  if(parts.length) raf=requestAnimationFrame(loop); else {raf=null;ctx.clearRect(0,0,cv.width,cv.height);}
+}
+
+/* ============== WIRE-UP ============== */
+$("payAmt").addEventListener("input",()=>{const a=parseFloat($("payAmt").value)||0;renderPlan(a);$("st-left").textContent=(a>0&&totalBal()>0)?Math.ceil(totalBal()/a):"—";});
+$("sim").addEventListener("input",updateSim);
+$("modal").addEventListener("click",e=>{ if(e.target.id==="modal") closePlot(); });
+$("mkey").value=CFG.mkey||""; $("binid").value=CFG.binid||"";
+accrue(); render(); pullCloud(false);
+</script>
+</body>
+</html>
