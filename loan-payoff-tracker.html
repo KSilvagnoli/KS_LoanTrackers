@@ -222,10 +222,14 @@ const START = {
   ],
   paydays:[],          // {n, amount, when, hits:[{id,amt,slain}]}
   nextPayday:1,
-  lastAccrued: todayISO(),
-  cfg:{mkey:"", binid:""}
+  lastAccrued: todayISO()
+  // cfg lives in a SEPARATE localStorage slot — never in the cloud save
 };
 let S = load();
+// Keys stored independently — never pushed to or overwritten by JSONBin
+const CFG_KEY = "debtSlayerCfg_v1";
+let CFG = (()=>{ try{ return JSON.parse(localStorage.getItem(CFG_KEY))||{mkey:"",binid:""}; }catch(e){ return {mkey:"",binid:""}; } })();
+function saveCfg(){ localStorage.setItem(CFG_KEY, JSON.stringify(CFG)); }
 
 /* ============== HELPERS ============== */
 function todayISO(){return new Date().toISOString().slice(0,10);}
@@ -407,55 +411,54 @@ function load(){
 }
 function mergeDefaults(s){
   const base=JSON.parse(JSON.stringify(START));
-  return Object.assign(base, s, {cfg:Object.assign(base.cfg, s.cfg||{})});
+  return Object.assign(base, s);
 }
 
 /* ============== CLOUD (JSONBin) ============== */
 const API="https://api.jsonbin.io/v3";
 let pushTimer=null;
 function scheduleCloudPush(){
-  if(!S.cfg.mkey || !S.cfg.binid) return;
+  if(!CFG.mkey || !CFG.binid) return;
   clearTimeout(pushTimer);
   pushTimer=setTimeout(pushCloud, 1200);
 }
 async function setupSync(){
-  S.cfg.mkey=$("mkey").value.trim();
-  S.cfg.binid=$("binid").value.trim();
-  if(!S.cfg.mkey){toast("Paste your Master Key first.");return;}
+  CFG.mkey=$("mkey").value.trim();
+  CFG.binid=$("binid").value.trim();
+  if(!CFG.mkey){toast("Paste your Master Key first.");return;}
   try{
-    if(!S.cfg.binid){
+    if(!CFG.binid){
       toast("Creating your cloud save…");
-      const r=await fetch(API+"/b",{method:"POST",headers:{"Content-Type":"application/json","X-Master-Key":S.cfg.mkey,"X-Bin-Private":"true","X-Bin-Name":"debt-slayer-save"},body:JSON.stringify(S)});
+      const r=await fetch(API+"/b",{method:"POST",headers:{"Content-Type":"application/json","X-Master-Key":CFG.mkey,"X-Bin-Private":"true","X-Bin-Name":"debt-slayer-save"},body:JSON.stringify(S)});
       if(!r.ok) throw new Error("HTTP "+r.status);
       const j=await r.json();
-      S.cfg.binid=j.metadata.id;
-      $("binid").value=S.cfg.binid;
+      CFG.binid=j.metadata.id;
+      $("binid").value=CFG.binid;
     }
-    persist();
+    saveCfg();
     await pushCloud();
-    $("binIdShow").innerHTML="✅ Connected. <b>Bin ID:</b> <code>"+S.cfg.binid+"</code> — copy this to your other devices.";
+    $("binIdShow").innerHTML="✅ Connected. <b>Bin ID:</b> <code>"+CFG.binid+"</code> — copy this to your other devices.";
     toast("☁️ Cloud sync active!");
     renderSyncStatus();
   }catch(e){ toast("Sync failed: "+e.message); renderSyncStatus(); }
 }
 async function pushCloud(){
-  if(!S.cfg.mkey||!S.cfg.binid) return;
+  if(!CFG.mkey||!CFG.binid) return;
   try{
-    const r=await fetch(API+"/b/"+S.cfg.binid,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":S.cfg.mkey},body:JSON.stringify(S)});
+    const r=await fetch(API+"/b/"+CFG.binid,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":CFG.mkey},body:JSON.stringify(S)});
     if(!r.ok) throw new Error("HTTP "+r.status);
     renderSyncStatus(true);
   }catch(e){ renderSyncStatus(false,e.message); }
 }
 async function pullCloud(announce){
-  if(!S.cfg.mkey||!S.cfg.binid){ if(announce) toast("Set up sync first."); return; }
+  if(!CFG.mkey||!CFG.binid){ if(announce) toast("Set up sync first."); return; }
   try{
-    const r=await fetch(API+"/b/"+S.cfg.binid+"/latest",{headers:{"X-Master-Key":S.cfg.mkey}});
+    const r=await fetch(API+"/b/"+CFG.binid+"/latest",{headers:{"X-Master-Key":CFG.mkey}});
     if(!r.ok) throw new Error("HTTP "+r.status);
     const j=await r.json();
     const remote=j.record;
     if(remote && remote.loans){
-      const keepCfg=S.cfg;
-      S=mergeDefaults(remote); S.cfg=keepCfg;
+      S=mergeDefaults(remote);
       localStorage.setItem(LS,JSON.stringify(S));
       accrue(); render();
       if(announce) toast("☁️ Loaded latest from cloud.");
@@ -464,9 +467,9 @@ async function pullCloud(announce){
 }
 function renderSyncStatus(ok,msg){
   const el=$("syncStatus");
-  if(!S.cfg.mkey||!S.cfg.binid){ el.innerHTML=`<span class="pill warn"><span class="dot"></span> Local only — not synced yet</span>`; return; }
+  if(!CFG.mkey||!CFG.binid){ el.innerHTML=`<span class="pill warn"><span class="dot"></span> Local only — not synced yet</span>`; return; }
   if(ok===false){ el.innerHTML=`<span class="pill warn"><span class="dot"></span> Sync error: ${msg||'offline'}</span>`; return; }
-  el.innerHTML=`<span class="pill ok"><span class="dot"></span> Synced · Bin ${S.cfg.binid.slice(0,8)}…</span>`;
+  el.innerHTML=`<span class="pill ok"><span class="dot"></span> Synced · Bin ${CFG.binid.slice(0,8)}…</span>`;
 }
 
 /* ============== BACKUP / RESTORE / RESET ============== */
@@ -485,9 +488,8 @@ function restore(ev){
   rd.readAsText(f);
 }
 function resetAll(){
-  if(!confirm("Reset the entire quest back to the starting $17,816 horde? (Your cloud key stays.)")) return;
-  const keepCfg=S.cfg;
-  S=JSON.parse(JSON.stringify(START)); S.cfg=keepCfg; S.lastAccrued=todayISO();
+  if(!confirm("Reset the entire quest back to the starting $17,816 horde? (Your cloud keys stay.)")) return;
+  S=JSON.parse(JSON.stringify(START)); S.lastAccrued=todayISO();
   persist(); render(); toast("↺ Quest reset.");
 }
 
@@ -515,7 +517,7 @@ function loop(){
 /* ============== WIRE-UP ============== */
 $("payAmt").addEventListener("input",()=>{renderPlan(parseFloat($("payAmt").value)||0); $("st-left").textContent=(parseFloat($("payAmt").value)>0)?Math.ceil(totalBal()/parseFloat($("payAmt").value)):"∞";});
 $("sim").addEventListener("input",updateSim);
-$("mkey").value=S.cfg.mkey||""; $("binid").value=S.cfg.binid||"";
+$("mkey").value=CFG.mkey||""; $("binid").value=CFG.binid||"";
 
 accrue();
 render();
